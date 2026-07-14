@@ -595,7 +595,7 @@ export default function RepairShop() {
           {inboxLoading && <p className="text-sm" style={{ color: "#8a8f86" }}>د بارکرنێ دایە...</p>}
 
           {!inboxLoading && requests.length === 0 && (
-            <p className="text-sm" style={{ color: "#6d726a" }}>هێشتا هیچ داواکارییەک نەهاتییە.</p>
+            <p className="text-sm" style={{ color: "#6d726a" }}>T : ژ ده مئ وه رگرتنا موبايلئ ب( ٣٠ ) خوله كان موبايل دهئته سه خبيرى كرن</p>
           )}
 
           <div className="space-y-3">
