@@ -194,6 +194,17 @@ export default function RepairShop() {
   const [myTicket, setMyTicket] = useState(null);
   const [ticketNo] = useState(() => Math.floor(1000 + Math.random() * 9000));
 
+  // fetch location ahead of time (once the review/contact step is reached) so that
+  // clicking "send via WhatsApp" can open the app immediately, synchronously,
+  // instead of waiting on an async geolocation lookup (which breaks the direct
+  // app hand-off on iOS Safari and shows an intermediate web page instead)
+  const [locationLink, setLocationLink] = useState(null);
+  useEffect(() => {
+    if (step === 3 && locationLink === null) {
+      getLocationLink().then((link) => setLocationLink(link || undefined));
+    }
+  }, [step, locationLink]);
+
   // ---- first-visit welcome ----
   const [showWelcome, setShowWelcome] = useState(false);
   useEffect(() => {
@@ -352,11 +363,27 @@ export default function RepairShop() {
     }
   }
 
-  async function submit() {
+  function submit() {
     if (!canSubmit) return;
-    // open the tab synchronously (tied to the click) so mobile browsers don't block it
-    // while we wait for the async geolocation lookup below
-    const win = window.open("", "_blank");
+    const msg = buildWhatsAppMessage({
+      ticketNo,
+      brandLabel,
+      model,
+      issueLabel,
+      price,
+      name,
+      phone,
+      city,
+      locationLink: locationLink || null,
+    });
+    const url = `https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(msg)}`;
+    // open synchronously, directly in response to the click, so iOS hands off
+    // straight to the WhatsApp app instead of showing an intermediate web page
+    window.open(url, "_blank");
+    setMyTicket(ticketNo);
+    setSubmitted(true);
+
+    // save the request in the background (doesn't block opening WhatsApp)
     const entry = {
       ticketNo,
       name,
@@ -371,24 +398,16 @@ export default function RepairShop() {
       reply: "",
       createdAt: new Date().toISOString(),
     };
-    try {
-      const res = await window.storage.get(REQUESTS_KEY, true);
-      const list = res ? JSON.parse(res.value) : [];
-      const updated = [entry, ...list];
-      await window.storage.set(REQUESTS_KEY, JSON.stringify(updated), true);
-    } catch (e) {
-      // storage failed, still proceed to whatsapp
-    }
-    const locationLink = await getLocationLink();
-    const msg = buildWhatsAppMessage({ ticketNo, brandLabel, model, issueLabel, price, name, phone, city, locationLink });
-    const url = `https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(msg)}`;
-    if (win) {
-      win.location.href = url;
-    } else {
-      window.open(url, "_blank");
-    }
-    setMyTicket(ticketNo);
-    setSubmitted(true);
+    (async () => {
+      try {
+        const res = await window.storage.get(REQUESTS_KEY, true);
+        const list = res ? JSON.parse(res.value) : [];
+        const updated = [entry, ...list];
+        await window.storage.set(REQUESTS_KEY, JSON.stringify(updated), true);
+      } catch (e) {
+        // storage failed, WhatsApp message already sent regardless
+      }
+    })();
   }
 
   return (
