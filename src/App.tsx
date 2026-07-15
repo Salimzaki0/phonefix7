@@ -170,7 +170,6 @@ function TicketLine({ label, value, filled }) {
 
 const TABS = [
   { id: "service", label: "جۆرێ سەخبیرکرن", icon: Wrench },
-  { id: "contact", label: "پەیوەندیا بلەز", icon: Phone },
   { id: "inbox", label: "ئاگەهدارکرن", icon: Bell },
   { id: "social", label: "سۆشیال", icon: Instagram },
 ];
@@ -1054,60 +1053,6 @@ export default function RepairShop() {
       )}
 
       {/* QUICK CONTACT TAB */}
-      {tab === "contact" && (
-        <div className="w-full max-w-4xl grid sm:grid-cols-2 gap-4">
-          <a
-            href={`tel:${SHOP_PHONE}`}
-            className="rounded-2xl p-6 flex items-center gap-4 transition-all hover:border-[#E8A33D]"
-            style={{ background: "#1E2226", border: "1px solid #2c3136" }}
-          >
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#E8A33D14" }}>
-              <Phone size={20} color="#E8A33D" />
-            </div>
-            <div>
-              <div className="text-sm mb-1" style={{ color: "#8a8f86" }}>پەیوەندی</div>
-              <div className="text-base font-semibold" style={{ color: "#EDEAE3", fontFamily: "'IBM Plex Mono', monospace" }}>{SHOP_PHONE}</div>
-            </div>
-          </a>
-
-          <a
-            href={`https://wa.me/${SHOP_WHATSAPP}`}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-2xl p-6 flex items-center gap-4 transition-all hover:border-[#E8A33D]"
-            style={{ background: "#1E2226", border: "1px solid #2c3136" }}
-          >
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#E8A33D14" }}>
-              <MessageCircle size={20} color="#E8A33D" />
-            </div>
-            <div>
-              <div className="text-sm mb-1" style={{ color: "#8a8f86" }}>واتساپ</div>
-              <div className="text-base font-semibold" style={{ color: "#EDEAE3", fontFamily: "'IBM Plex Mono', monospace" }}>{SHOP_PHONE}</div>
-            </div>
-          </a>
-
-          <div className="rounded-2xl p-6 flex items-center gap-4" style={{ background: "#1E2226", border: "1px solid #2c3136" }}>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#E8A33D14" }}>
-              <Clock size={20} color="#E8A33D" />
-            </div>
-            <div>
-              <div className="text-sm mb-1" style={{ color: "#8a8f86" }}>کاتێن کارکرنێ</div>
-              <div className="text-base" style={{ color: "#EDEAE3" }}>هەمی رۆژان ٩:٠٠ – ٩:٠٠</div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl p-6 flex items-center gap-4" style={{ background: "#1E2226", border: "1px solid #2c3136" }}>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#E8A33D14" }}>
-              <MapPin size={20} color="#E8A33D" />
-            </div>
-            <div>
-              <div className="text-sm mb-1" style={{ color: "#8a8f86" }}>شوین</div>
-              <div className="text-base" style={{ color: "#EDEAE3" }}>ناڤچا خۆ ل ڤێرێ زیاد بکە</div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* INBOX TAB */}
       {tab === "inbox" && (
         <div className="w-full max-w-4xl rounded-2xl p-6 md:p-8" style={{ background: "#1E2226", border: "1px solid #2c3136" }}>
@@ -1237,7 +1182,7 @@ export default function RepairShop() {
           </button>
 
           <a
-            href={`https://wa.me/message/CLRUY536HPHPN1?text=${encodeURIComponent("سلاو، ئەز ژ ماڵپەڕی هاتیم")}`}
+            href={`https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent("سلاو، ئەز ژ ماڵپەڕی هاتیم")}`}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-2xl p-6 flex items-center gap-4 text-right transition-all hover:border-[#E8A33D] w-full"
