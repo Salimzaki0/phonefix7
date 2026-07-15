@@ -1,50 +1,24 @@
-# ماڵپەڕێ خزمەتا چاکرنا مووبایلێ
+# repair-site-v2
 
-## چۆن ل Visual Studio Code ڤەکەیێ و ب کاربینیێ
+پرۆژا ماڵپەڕا چاکرنا مووبایلان (زاخو)
 
-1. **Node.js** دابمەزرینە (ئەگەر نینایە): ژ https://nodejs.org (وەرزیۆنا LTS)
-2. ئەڤ فۆڵدەرێ (repair-shop-project) ل VS Code ڤەکە: File → Open Folder
-3. Terminal ل VS Code ڤەکە (Terminal → New Terminal) و ئەڤ فەرمانان بنڤیسە:
+## دەستپێکرن
 
-```bash
+```
 npm install
 npm run dev
 ```
 
-4. Vite لینکەکێ ددەت (نموونە: `http://localhost:5173`) — کلیک بکە یان کۆپی بکە بۆ بروزەرێ، ماڵپەڕ ل ڤێرێ کاردکەت.
+Piştre link-ê ku terminal nîşan dide (mînak http://localhost:5173) veke bi browser.
 
-بۆ چێکرنا وەشانا دویماهیک (build) بۆ بارکرنێ ل سەر هۆستینگێ:
+## بلاڤکرنا (build) بۆ Netlify
 
-```bash
+```
 npm run build
 ```
 
-ئەنجام دکەڤیتە ناڤ فۆڵدەرا `dist/` — ڤێ فۆڵدەرێ دشێی بکەیتە سەر هەر هۆستینگەکێ (Netlify, Vercel, Hostinger, هتد).
+Ev ê fişareke `dist/` çêke, tê push kirin GitHub, Netlify wê otomatîk deploy dike.
 
----
-
-## تێبینییەکا گرنگ ل سەر زانیاریان (داواکاری، ژمارا سەردانکەران)
-
-ئەڤ پرۆژە پێشتر د Claude دا ب سیستەمەکا تایبەت (`window.storage`) هاتبوو نڤیساندن کو زانیاریان د نافبەری هەمی بکارئینەران دا هاڤبەش دکەت. ژبەر کو ئەڤ سیستەمە تنها ل ناڤ Claude کاردکەت، من فایلەکا `src/storageShim.js` زێدەکر کو هەمان API ب `localStorage`یا بروزەرێ چێدکەت — بۆ ڤێ چەندێ کۆدێ App.jsx بێ گۆهۆرین ماوە و کاردکەت.
-
-**بەلێ** `localStorage` تنها د ناڤ **هەمان بروزەر و هەمان ئامێرێ** دا دمینیت. ئەڤ واتە:
-
-- داواکارییێن میوانان (ئینبۆکس) و ژمارا سەردانکەران **ژ ئامێرەکێ بۆ ئامێرەکێ دی هاڤبەش نابن**. هەر میوانەک ژ مۆبایلا خۆ بچیت، ئینبۆکسا وی جودا یە ژ یا تە.
-- بۆ ڤێ چەندێ ب راستی ل ئینتەرنێتێ کاربکەت (هەمی میوان و خودانێ کاسبی هەمان زانیاری ببینن)، دڤێت پشتەکا سەرڤیسێ (backend/database) وەکو **Firebase**, **Supabase**, یان **Google Sheets + Apps Script** زێدە بکەی. ئەگەر بڤێی، دشێم یارمەتیێ بدەم بۆ گرێدانا یەکێ ژ ڤان.
-- داواکاریێن واتساپی (دوگمەیا "ناردن ب واتساپ") ب هەمان شێوەیێ کاردکەت وەکو بەری نوکە، چونکی ئەو تنها لینکەکا `wa.me` ڤەدکەت و پشتی سیستەمەکا جودا نابیت.
-
-## پێکهاتا فۆڵدەران
-
-```
-repair-shop-project/
-├── index.html
-├── package.json
-├── vite.config.js
-├── tailwind.config.js
-├── postcss.config.js
-└── src/
-    ├── main.jsx        ← دەستپێکا ئەپلیکەیشنێ
-    ├── App.jsx          ← هەمی کۆدێ ماڵپەڕی (لاپەڕ، فۆرم، ئینبۆکس، سۆشیال)
-    ├── storageShim.js   ← دگەرینیتەوە window.storage ب localStorage
-    └── index.css        ← Tailwind
-```
+## تێبینی
+Koda `src/App.tsx` xwe li ser sîstema hilanîna Claude.ai-ê (`window.storage`) hatibû nivîsîn.
+`src/main.tsx` şêwazek bi `localStorage` çêkiriye da ku ev taybetmendî li derveyî Claude jî bixebite.
