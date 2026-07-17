@@ -233,13 +233,38 @@ export default function RepairShop() {
       setPhotoError("تکایه وێنەیەکێ هەلبژێرە");
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setPhotoError("وێنه گەورەیه (سنور ٢ مێگابایت)");
+    if (file.size > 8 * 1024 * 1024) {
+      setPhotoError("وێنه گەورەیه (سنور ٨ مێگابایت)");
       return;
     }
     setPhotoError("");
     const reader = new FileReader();
-    reader.onload = () => setPhotoDataUrl(reader.result);
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // shrink to a max dimension and re-encode as JPEG so the stored
+        // base64 stays small enough for localStorage (which has a tight
+        // few-MB quota) even after several requests pile up
+        const MAX_DIM = 900;
+        let { width, height } = img;
+        if (width > height && width > MAX_DIM) {
+          height = Math.round((height * MAX_DIM) / width);
+          width = MAX_DIM;
+        } else if (height > MAX_DIM) {
+          width = Math.round((width * MAX_DIM) / height);
+          height = MAX_DIM;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        setPhotoDataUrl(canvas.toDataURL("image/jpeg", 0.6));
+      };
+      img.onerror = () => setPhotoError("نەشیا وێنه بخوینیته");
+      img.src = reader.result;
+    };
+    reader.onerror = () => setPhotoError("نەشیا فایلی بخوینیته");
     reader.readAsDataURL(file);
   }
 
@@ -414,28 +439,9 @@ export default function RepairShop() {
     }
   }
 
-  function submit() {
+  async function submit() {
     if (!canSubmit) return;
-    const msg = buildWhatsAppMessage({
-      ticketNo,
-      brandLabel,
-      model,
-      issueLabel,
-      price,
-      name,
-      phone,
-      city,
-      locationLink: locationLink || null,
-      hasPhoto: !!photoDataUrl,
-    });
-    const url = `https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(msg)}`;
-    // open synchronously, directly in response to the click, so iOS hands off
-    // straight to the WhatsApp app instead of showing an intermediate web page
-    window.open(url, "_blank");
-    setMyTicket(ticketNo);
-    setSubmitted(true);
 
-    // save the request in the background (doesn't block opening WhatsApp)
     const entry = {
       ticketNo,
       name,
@@ -451,16 +457,51 @@ export default function RepairShop() {
       reply: "",
       createdAt: new Date().toISOString(),
     };
-    (async () => {
+
+    // save the request FIRST and wait for it to finish — opening WhatsApp
+    // navigates away (especially inside a sandboxed preview), which can cut
+    // off an in-flight save if it hasn't been awaited yet
+    let list = [];
+    try {
+      const res = await window.storage.get(REQUESTS_KEY, true);
+      list = res ? JSON.parse(res.value) : [];
+    } catch (e) {
+      // key doesn't exist yet (first-ever request) or read failed —
+      // either way, start from an empty list instead of aborting the save
+      list = [];
+    }
+    // keep only the most recent 40 requests so old photos don't pile up
+    // and eventually blow past localStorage's small quota
+    const updated = [entry, ...list].slice(0, 40);
+    try {
+      await window.storage.set(REQUESTS_KEY, JSON.stringify(updated), true);
+    } catch (quotaErr) {
+      // likely ran out of storage space because of the photo(s) — retry
+      // once without any photos so the request itself still gets saved
+      const updatedNoPhotos = updated.map((r) => ({ ...r, photo: null }));
       try {
-        const res = await window.storage.get(REQUESTS_KEY, true);
-        const list = res ? JSON.parse(res.value) : [];
-        const updated = [entry, ...list];
-        await window.storage.set(REQUESTS_KEY, JSON.stringify(updated), true);
-      } catch (e) {
-        // storage failed, WhatsApp message already sent regardless
+        await window.storage.set(REQUESTS_KEY, JSON.stringify(updatedNoPhotos), true);
+      } catch (e2) {
+        // still failed, nothing more we can do — WhatsApp message will still be sent
       }
-    })();
+    }
+
+    const msg = buildWhatsAppMessage({
+      ticketNo,
+      brandLabel,
+      model,
+      issueLabel,
+      price,
+      name,
+      phone,
+      city,
+      locationLink: locationLink || null,
+      hasPhoto: !!photoDataUrl,
+    });
+    const url = `https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+    setMyTicket(ticketNo);
+    setSubmitted(true);
   }
 
   return (
