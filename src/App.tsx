@@ -115,7 +115,7 @@ function estimatePrice(brandId, issueId, model) {
   return { low, high };
 }
 
-function buildWhatsAppMessage({ ticketNo, brandLabel, model, issueLabel, price, name, phone, city, locationLink }) {
+function buildWhatsAppMessage({ ticketNo, brandLabel, model, issueLabel, price, name, phone, city, locationLink, hasPhoto }) {
   const lines = [
     `داواکارییەکا نوی ژ ماڵپەڕی - تیکێت #${ticketNo}`,
     `ناڤ: ${name}`,
@@ -126,6 +126,7 @@ function buildWhatsAppMessage({ ticketNo, brandLabel, model, issueLabel, price, 
     `کێماسی: ${issueLabel}`,
     price ? `نرخێ تخمینی: ${price.low} – ${price.high} $` : null,
     locationLink ? `شوینا نوکه: ${locationLink}` : null,
+    hasPhoto ? `📷 میوان وێنەیێ ئاریشێ زیاد کریه، لناڤ بەشێ ئاگەهدارکرن ل ماڵپەڕی بینه` : null,
   ].filter(Boolean);
   return lines.join("\n");
 }
@@ -177,6 +178,35 @@ const TABS = [
 export default function RepairShop() {
   const [tab, setTab] = useState("service");
 
+  // ---- inbox password protection ----
+  const INBOX_PASSWORD = "salim2026";
+  const [inboxUnlocked, setInboxUnlocked] = useState(false);
+  const [inboxPasswordInput, setInboxPasswordInput] = useState("");
+  const [inboxPasswordError, setInboxPasswordError] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get("repairsite-inbox-unlocked", false);
+        if (res && res.value === "1") setInboxUnlocked(true);
+      } catch (e) {
+        // ignore, not unlocked yet
+      }
+    })();
+  }, []);
+  async function tryUnlockInbox() {
+    if (inboxPasswordInput === INBOX_PASSWORD) {
+      setInboxUnlocked(true);
+      setInboxPasswordError(false);
+      try {
+        await window.storage.set("repairsite-inbox-unlocked", "1", false);
+      } catch (e) {
+        // ignore
+      }
+    } else {
+      setInboxPasswordError(true);
+    }
+  }
+
   // ---- service flow state ----
   const [step, setStep] = useState(0);
   const [brand, setBrand] = useState(null);
@@ -193,6 +223,26 @@ export default function RepairShop() {
   const [myTicket, setMyTicket] = useState(null);
   const [ticketNo] = useState(() => Math.floor(1000 + Math.random() * 9000));
 
+  // ---- optional issue photo ----
+  const [photoDataUrl, setPhotoDataUrl] = useState(null);
+  const [photoError, setPhotoError] = useState("");
+  function handlePhotoSelect(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("تکایه وێنەیەکێ هەلبژێرە");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setPhotoError("وێنه گەورەیه (سنور ٢ مێگابایت)");
+      return;
+    }
+    setPhotoError("");
+    const reader = new FileReader();
+    reader.onload = () => setPhotoDataUrl(reader.result);
+    reader.readAsDataURL(file);
+  }
+
   // fetch location ahead of time (once the review/contact step is reached) so that
   // clicking "send via WhatsApp" can open the app immediately, synchronously,
   // instead of waiting on an async geolocation lookup (which breaks the direct
@@ -207,17 +257,19 @@ export default function RepairShop() {
   // ---- first-visit welcome ----
   const [showWelcome, setShowWelcome] = useState(false);
   useEffect(() => {
-    try {
-      const seen = localStorage.getItem("repairsite-welcomed");
-      if (!seen) setShowWelcome(true);
-    } catch (e) {
-      // localStorage unavailable, skip the welcome screen silently
-    }
+    (async () => {
+      try {
+        const res = await window.storage.get("repairsite-welcomed", false);
+        if (!res) setShowWelcome(true);
+      } catch (e) {
+        setShowWelcome(true);
+      }
+    })();
   }, []);
-  function dismissWelcome() {
+  async function dismissWelcome() {
     setShowWelcome(false);
     try {
-      localStorage.setItem("repairsite-welcomed", "1");
+      await window.storage.set("repairsite-welcomed", "1", false);
     } catch (e) {
       // ignore
     }
@@ -374,6 +426,7 @@ export default function RepairShop() {
       phone,
       city,
       locationLink: locationLink || null,
+      hasPhoto: !!photoDataUrl,
     });
     const url = `https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(msg)}`;
     // open synchronously, directly in response to the click, so iOS hands off
@@ -392,6 +445,7 @@ export default function RepairShop() {
       model,
       issueLabel,
       price,
+      photo: photoDataUrl || null,
       seen: false,
       status: "pending",
       reply: "",
@@ -674,7 +728,7 @@ export default function RepairShop() {
                           className="text-lg font-bold"
                           style={{ color: "#E8A33D", fontFamily: "'IBM Plex Mono', monospace" }}
                         >
-                          {price.low} – {price.high} $
+                          {["iPhone 6", "iPhone 6 Plus", "iPhone 6s", "iPhone 6s Plus", "iPhone 7", "iPhone 7 Plus", "iPhone 8", "iPhone 8 Plus"].includes(model) ? "20 $" : ["iPhone X", "iPhone XR", "iPhone XS", "iPhone XS Max"].includes(model) ? "27 $" : ["iPhone 11", "iPhone 11 Pro", "iPhone 11 Pro Max"].includes(model) ? "35 $" : `${price.low} – ${price.high} $`}
                         </span>
                       </button>
                     )}
@@ -707,7 +761,7 @@ export default function RepairShop() {
                           className="text-lg font-bold"
                           style={{ color: "#E8A33D", fontFamily: "'IBM Plex Mono', monospace" }}
                         >
-                          {Math.round(price.low * 1.2)} – {Math.round(price.high * 1.2)} $
+                          {["iPhone 6", "iPhone 6 Plus", "iPhone 6s", "iPhone 6s Plus", "iPhone 7", "iPhone 7 Plus", "iPhone 8", "iPhone 8 Plus"].includes(model) ? "23 $" : ["iPhone X", "iPhone XR", "iPhone XS", "iPhone XS Max"].includes(model) ? "33 $" : ["iPhone 11", "iPhone 11 Pro", "iPhone 11 Pro Max"].includes(model) ? "38 $" : `${Math.round(price.low * 1.2)} – ${Math.round(price.high * 1.2)} $`}
                         </span>
                       </button>
                     )}
@@ -740,7 +794,7 @@ export default function RepairShop() {
                           className="text-lg font-bold"
                           style={{ color: "#E8A33D", fontFamily: "'IBM Plex Mono', monospace" }}
                         >
-                          {Math.round(price.low * 0.8)} – {Math.round(price.high * 0.8)} $
+                          {["iPhone 6", "iPhone 6 Plus", "iPhone 6s", "iPhone 6s Plus", "iPhone 7", "iPhone 7 Plus", "iPhone 8", "iPhone 8 Plus"].includes(model) ? "25 $" : ["iPhone X", "iPhone XR", "iPhone XS", "iPhone XS Max"].includes(model) ? "38 $" : ["iPhone 11", "iPhone 11 Pro", "iPhone 11 Pro Max"].includes(model) ? "50 $" : `${Math.round(price.low * 0.8)} – ${Math.round(price.high * 0.8)} $`}
                         </span>
                       </button>
                     )}
@@ -773,7 +827,7 @@ export default function RepairShop() {
                           className="text-lg font-bold"
                           style={{ color: "#E8A33D", fontFamily: "'IBM Plex Mono', monospace" }}
                         >
-                          {Math.round(price.low * 0.6)} – {Math.round(price.high * 0.6)} $
+                          {["iPhone 6", "iPhone 6 Plus", "iPhone 6s", "iPhone 6s Plus", "iPhone 7", "iPhone 7 Plus", "iPhone 8", "iPhone 8 Plus"].includes(model) ? "35 $" : ["iPhone X", "iPhone XR", "iPhone XS", "iPhone XS Max"].includes(model) ? "45 $" : ["iPhone 11", "iPhone 11 Pro", "iPhone 11 Pro Max"].includes(model) ? "75 $" : `${Math.round(price.low * 0.6)} – ${Math.round(price.high * 0.6)} $`}
                         </span>
                       </button>
                     )}
@@ -858,6 +912,45 @@ export default function RepairShop() {
                         className="w-full rounded-lg px-4 py-3 text-sm outline-none"
                         style={{ background: "#181c1f", border: "1px solid #2c3136", color: "#EDEAE3", fontFamily: "'IBM Plex Mono', monospace" }}
                       />
+
+                      <div>
+                        <label
+                          htmlFor="issue-photo-input"
+                          className="w-full rounded-lg px-4 py-3 text-sm flex items-center justify-between cursor-pointer"
+                          style={{ background: "#181c1f", border: "1px dashed #2c3136", color: "#8a8f86" }}
+                        >
+                          <span>{photoDataUrl ? "وێنه هاتیه هەلبژارتن ✓" : "وێنەیێ ئاریشێ زیاد بکه (ئارەزوومەندانه)"}</span>
+                          <span style={{ color: "#E8A33D" }}>📷</span>
+                        </label>
+                        <input
+                          id="issue-photo-input"
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoSelect}
+                          className="hidden"
+                        />
+                        {photoError && (
+                          <p className="text-xs mt-1" style={{ color: "#d97757" }}>{photoError}</p>
+                        )}
+                        {photoDataUrl && (
+                          <div className="mt-2 relative inline-block">
+                            <img
+                              src={photoDataUrl}
+                              alt="وێنەیێ ئاریشێ"
+                              className="rounded-lg max-h-32"
+                              style={{ border: "1px solid #2c3136" }}
+                            />
+                            <button
+                              onClick={() => setPhotoDataUrl(null)}
+                              className="absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                              style={{ background: "#14171A", color: "#d97757", border: "1px solid #d97757" }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <div>
                         {cityMode === null && (
                           <div className="grid grid-cols-1 gap-2">
@@ -1054,7 +1147,38 @@ export default function RepairShop() {
 
       {/* QUICK CONTACT TAB */}
       {/* INBOX TAB */}
-      {tab === "inbox" && (
+      {tab === "inbox" && !inboxUnlocked && (
+        <div className="w-full max-w-sm rounded-2xl p-6 md:p-8 text-center" style={{ background: "#1E2226", border: "1px solid #2c3136" }}>
+          <h2 className="text-lg font-bold mb-1" style={{ color: "#EDEAE3" }}>پاسوۆرد پێدڤیه</h2>
+          <p className="text-sm mb-4" style={{ color: "#8a8f86" }}>ئەڤ بەشە تنێ بۆ خودانێ دوکانێ یه.</p>
+          <input
+            type="password"
+            value={inboxPasswordInput}
+            onChange={(e) => {
+              setInboxPasswordInput(e.target.value);
+              setInboxPasswordError(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") tryUnlockInbox();
+            }}
+            placeholder="پاسوۆرد بنڤیسه"
+            className="w-full rounded-xl px-4 py-3 text-sm mb-3 text-center"
+            style={{ background: "#181c1f", border: inboxPasswordError ? "1px solid #d97757" : "1px solid #2c3136", color: "#EDEAE3" }}
+          />
+          {inboxPasswordError && (
+            <p className="text-xs mb-3" style={{ color: "#d97757" }}>پاسوۆرد چەوته، دیسا هەوڵ بدە</p>
+          )}
+          <button
+            onClick={tryUnlockInbox}
+            className="w-full rounded-xl px-5 py-3 text-sm font-semibold transition-all"
+            style={{ background: "#E8A33D", color: "#14171A" }}
+          >
+            چوونه ژوور
+          </button>
+        </div>
+      )}
+
+      {tab === "inbox" && inboxUnlocked && (
         <div className="w-full max-w-4xl rounded-2xl p-6 md:p-8" style={{ background: "#1E2226", border: "1px solid #2c3136" }}>
           <h2 className="text-xl font-bold mb-1" style={{ color: "#EDEAE3" }}>ئاگەهدارکرنێن نوی</h2>
           <p className="text-sm mb-6" style={{ color: "#8a8f86" }}>هەمی داواکارییێن ژ ماڵپەڕی هاتینە ناردن ل ڤێرێ دیارن.</p>
@@ -1089,6 +1213,14 @@ export default function RepairShop() {
                   <div className="text-xs mt-1" style={{ color: "#6B8F71", fontFamily: "'IBM Plex Mono', monospace" }}>
                     {r.price.low} – {r.price.high} $
                   </div>
+                )}
+                {r.photo && (
+                  <img
+                    src={r.photo}
+                    alt="وێنەیێ ئاریشێ"
+                    className="mt-2 rounded-lg max-h-40"
+                    style={{ border: "1px solid #2c3136" }}
+                  />
                 )}
 
                 {r.status === "accepted" && (
@@ -1167,20 +1299,6 @@ export default function RepairShop() {
             </div>
           </button>
 
-          <button
-            onClick={() => openApp(SNAPCHAT_APP_URL, SNAPCHAT_URL)}
-            className="rounded-2xl p-6 flex items-center gap-4 text-right transition-all hover:border-[#E8A33D] w-full"
-            style={{ background: "#1E2226", border: "1px solid #2c3136" }}
-          >
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#E8A33D14" }}>
-              <Ghost size={20} color="#E8A33D" />
-            </div>
-            <div>
-              <div className="text-sm mb-1" style={{ color: "#8a8f86" }}>سناب چات</div>
-              <div className="text-base font-semibold" style={{ color: "#EDEAE3", fontFamily: "'IBM Plex Mono', monospace" }}>@{SNAPCHAT_HANDLE}</div>
-            </div>
-          </button>
-
           <a
             href={`https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent("سلاو، ئەز ژ ماڵپەڕی هاتیم")}`}
             target="_blank"
@@ -1198,6 +1316,10 @@ export default function RepairShop() {
           </a>
         </div>
       )}
+
+      <div className="w-full text-center py-6 text-[11px]" style={{ color: "#4a4f47", fontFamily: "'IBM Plex Mono', monospace" }}>
+        © {new Date().getFullYear()} by.salim.zaki — جميع الحقوق محفوظة
+      </div>
 
       {/* BOTTOM NAV */}
       <div
